@@ -6,15 +6,9 @@ const { autoUpdater } = require('electron-updater');
 autoUpdater.logger = null;
 
 let mainWindow;
+let serverPort;
 
-app.whenReady().then(async () => {
-  // Point the database at the user's writable app-data directory
-  // so it survives app updates and isn't locked inside the bundle.
-  process.env.DB_PATH = path.join(app.getPath('userData'), 'coach.db');
-
-  const { startServer } = require('./server');
-  const port = await startServer();
-
+function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 900,
@@ -27,7 +21,7 @@ app.whenReady().then(async () => {
     }
   });
 
-  mainWindow.loadURL(`http://localhost:${port}`);
+  mainWindow.loadURL(`http://localhost:${serverPort}`);
 
   // Open external links in the system browser, not inside the app
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -36,6 +30,17 @@ app.whenReady().then(async () => {
   });
 
   mainWindow.on('closed', () => { mainWindow = null; });
+}
+
+app.whenReady().then(async () => {
+  // Point the database at the user's writable app-data directory
+  // so it survives app updates and isn't locked inside the bundle.
+  process.env.DB_PATH = path.join(app.getPath('userData'), 'coach.db');
+
+  const { startServer } = require('./server');
+  serverPort = await startServer();
+
+  createWindow();
 
   // Check for updates after the window is ready (only runs in packaged app)
   if (app.isPackaged) {
@@ -61,9 +66,7 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
+// Re-open the window when the dock icon is clicked and no windows are open
 app.on('activate', () => {
-  if (!mainWindow) {
-    // Re-create the window when the dock icon is clicked and no windows are open
-    app.emit('ready');
-  }
+  if (!mainWindow) createWindow();
 });
