@@ -36,6 +36,7 @@ async function initialize() {
       home_jersey TEXT DEFAULT '',
       away_jersey TEXT DEFAULT '',
       show_end_time INTEGER DEFAULT 1,
+      short_name TEXT DEFAULT '',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
@@ -64,6 +65,9 @@ async function initialize() {
     }
     if (!colNames.includes('show_end_time')) {
       db.run("ALTER TABLE teams ADD COLUMN show_end_time INTEGER DEFAULT 1");
+    }
+    if (!colNames.includes('short_name')) {
+      db.run("ALTER TABLE teams ADD COLUMN short_name TEXT DEFAULT ''");
     }
   } catch (e) { /* columns already exist */ }
 
@@ -123,21 +127,21 @@ function getTeam(id) {
   return getRow('SELECT * FROM teams WHERE id = ?', [id]);
 }
 
-function createTeam({ name, coach_name, ical_url, motto, salutation, phone, email, training_jersey, home_jersey, away_jersey, show_end_time }) {
+function createTeam({ name, coach_name, ical_url, motto, salutation, phone, email, training_jersey, home_jersey, away_jersey, show_end_time, short_name }) {
   const showEnd = show_end_time != null ? show_end_time : 1;
   runSql(
-    'INSERT INTO teams (name, coach_name, ical_url, motto, salutation, phone, email, training_jersey, home_jersey, away_jersey, show_end_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    [name, coach_name, ical_url || '', motto || 'Bravery. Resilience. Excellence.', salutation != null ? salutation : 'See you all soon!', phone || '', email || '', training_jersey || '', home_jersey || '', away_jersey || '', showEnd]
+    'INSERT INTO teams (name, coach_name, ical_url, motto, salutation, phone, email, training_jersey, home_jersey, away_jersey, show_end_time, short_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [name, coach_name, ical_url || '', motto || 'Bravery. Resilience. Excellence.', salutation != null ? salutation : 'See you all soon!', phone || '', email || '', training_jersey || '', home_jersey || '', away_jersey || '', showEnd, short_name || '']
   );
   const id = db.exec('SELECT last_insert_rowid()')[0].values[0][0];
   saveDb();
-  return { id, name, coach_name, ical_url, motto, salutation, phone, email, training_jersey, home_jersey, away_jersey, show_end_time: showEnd };
+  return { id, name, coach_name, ical_url, motto, salutation, phone, email, training_jersey, home_jersey, away_jersey, show_end_time: showEnd, short_name: short_name || '' };
 }
 
-function updateTeam(id, { name, coach_name, ical_url, motto, salutation, phone, email, training_jersey, home_jersey, away_jersey, show_end_time }) {
+function updateTeam(id, { name, coach_name, ical_url, motto, salutation, phone, email, training_jersey, home_jersey, away_jersey, show_end_time, short_name }) {
   runSql(
-    'UPDATE teams SET name = ?, coach_name = ?, ical_url = ?, motto = ?, salutation = ?, phone = ?, email = ?, training_jersey = ?, home_jersey = ?, away_jersey = ?, show_end_time = ? WHERE id = ?',
-    [name, coach_name, ical_url || '', motto || 'Bravery. Resilience. Excellence.', salutation != null ? salutation : 'See you all soon!', phone || '', email || '', training_jersey || '', home_jersey || '', away_jersey || '', show_end_time != null ? show_end_time : 1, id]
+    'UPDATE teams SET name = ?, coach_name = ?, ical_url = ?, motto = ?, salutation = ?, phone = ?, email = ?, training_jersey = ?, home_jersey = ?, away_jersey = ?, show_end_time = ?, short_name = ? WHERE id = ?',
+    [name, coach_name, ical_url || '', motto || 'Bravery. Resilience. Excellence.', salutation != null ? salutation : 'See you all soon!', phone || '', email || '', training_jersey || '', home_jersey || '', away_jersey || '', show_end_time != null ? show_end_time : 1, short_name || '', id]
   );
   return getTeam(id);
 }

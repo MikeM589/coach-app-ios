@@ -56,10 +56,8 @@
           <form id="email-form">
             <div class="form-row">
               <div class="form-group">
-                <label for="email-team">Team</label>
-                <select id="email-team" required>
-                  <option value="">Select a team...</option>
-                </select>
+                <label>Team(s)</label>
+                <div id="email-team-list" class="team-checkbox-list"></div>
               </div>
               <div class="form-group">
                 <label for="email-week">Week Starting (Sunday)</label>
@@ -101,11 +99,19 @@
               </div>
             </div>
 
-            <div class="form-group checkbox-group">
-              <label>
-                <input type="checkbox" id="include-quote" checked>
-                <span class="check-label">Include an inspirational quote</span>
-              </label>
+            <div class="form-row checkbox-row">
+              <div class="form-group checkbox-group">
+                <label>
+                  <input type="checkbox" id="include-birthdays" checked>
+                  <span class="check-label">Include player birthdays</span>
+                </label>
+              </div>
+              <div class="form-group checkbox-group">
+                <label>
+                  <input type="checkbox" id="include-quote" checked>
+                  <span class="check-label">Include an inspirational quote</span>
+                </label>
+              </div>
             </div>
 
             <div class="form-group">
@@ -141,6 +147,10 @@
               <div class="form-group">
                 <label for="team-name">Team Name</label>
                 <input type="text" id="team-name" required placeholder="e.g., FC Lightning U10">
+              </div>
+              <div class="form-group">
+                <label for="team-short-name">Short Name <span class="optional">(used in multi-team emails)</span></label>
+                <input type="text" id="team-short-name" placeholder="e.g., Blue">
               </div>
               <div class="form-group">
                 <label for="ical-url">iCal Calendar URL <span class="optional">(optional)</span></label>

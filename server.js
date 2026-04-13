@@ -36,11 +36,11 @@ app.get('/api/teams/:id', (req, res) => {
 
 app.post('/api/teams', (req, res) => {
   try {
-    const { name, coach_name, ical_url, motto, salutation, phone, email, training_jersey, home_jersey, away_jersey } = req.body;
+    const { name, coach_name, ical_url, motto, salutation, phone, email, training_jersey, home_jersey, away_jersey, show_end_time, short_name } = req.body;
     if (!name || !coach_name) {
       return res.status(400).json({ error: 'Team name and coach name are required' });
     }
-    const team = db.createTeam({ name, coach_name, ical_url, motto, salutation, phone, email, training_jersey, home_jersey, away_jersey });
+    const team = db.createTeam({ name, coach_name, ical_url, motto, salutation, phone, email, training_jersey, home_jersey, away_jersey, show_end_time, short_name });
     res.status(201).json(team);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -49,11 +49,11 @@ app.post('/api/teams', (req, res) => {
 
 app.put('/api/teams/:id', (req, res) => {
   try {
-    const { name, coach_name, ical_url, motto, salutation, phone, email, training_jersey, home_jersey, away_jersey } = req.body;
+    const { name, coach_name, ical_url, motto, salutation, phone, email, training_jersey, home_jersey, away_jersey, show_end_time, short_name } = req.body;
     if (!name || !coach_name) {
       return res.status(400).json({ error: 'Team name and coach name are required' });
     }
-    const team = db.updateTeam(req.params.id, { name, coach_name, ical_url, motto, salutation, phone, email, training_jersey, home_jersey, away_jersey });
+    const team = db.updateTeam(req.params.id, { name, coach_name, ical_url, motto, salutation, phone, email, training_jersey, home_jersey, away_jersey, show_end_time, short_name });
     res.json(team);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -206,12 +206,14 @@ app.post('/api/generate-email', async (req, res) => {
   try {
     const {
       team_id,
+      team_ids,
       week_start,
       schedule,
       team_focus,
       homework_items,
       personal_note,
       include_quote,
+      include_birthdays,
       reminders
     } = req.body;
 
@@ -259,11 +261,26 @@ app.post('/api/generate-email', async (req, res) => {
     scheduleSection += scheduleLines.length > 0 ? scheduleLines.join('\n') : 'No events scheduled this week.';
     sections.push(scheduleSection);
 
-    // Birthday section
+    // Birthday section — check all selected teams, deduplicate by player name
+    // include_birthdays defaults to true when not sent (backward compat)
+    if (include_birthdays !== false) {
     const start = new Date(week_start + 'T00:00:00');
     const end = new Date(start);
     end.setDate(end.getDate() + 6);
-    const birthdayPlayers = db.getUpcomingBirthdays(team_id, start, end);
+    const allTeamIds = (team_ids && team_ids.length > 0) ? team_ids : [team_id];
+    const bdayMap = new Map();
+    allTeamIds.forEach(tid => {
+      db.getUpcomingBirthdays(tid, start, end).forEach(p => {
+        if (!bdayMap.has(p.name)) bdayMap.set(p.name, p);
+      });
+    });
+    const birthdayPlayers = Array.from(bdayMap.values()).sort((a, b) => {
+      const dateA = a.birthday ? new Date(a.birthday + 'T00:00:00') : null;
+      const dateB = b.birthday ? new Date(b.birthday + 'T00:00:00') : null;
+      const dayA = dateA ? dateA.getMonth() * 100 + dateA.getDate() : 9999;
+      const dayB = dateB ? dateB.getMonth() * 100 + dateB.getDate() : 9999;
+      return dayA - dayB;
+    });
     if (birthdayPlayers.length > 0) {
       let bdaySection = `\u{1F382} Happy Birthday\n`;
       birthdayPlayers.forEach(p => {
@@ -278,6 +295,7 @@ app.post('/api/generate-email', async (req, res) => {
       });
       sections.push(bdaySection.trimEnd());
     }
+    } // end include_birthdays
 
     // Team Focus
     if (team_focus && team_focus.trim()) {

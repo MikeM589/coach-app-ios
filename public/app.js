@@ -117,25 +117,57 @@ async function loadTeams() {
   }
 }
 
-function populateTeamDropdowns() {
-  const selects = [
-    document.getElementById('email-team'),
-    document.getElementById('player-team-select')
-  ];
+function getTeamShortName(team) {
+  if (team.short_name && team.short_name.trim()) return team.short_name.trim();
+  const idx = team.name.lastIndexOf(' - ');
+  return idx >= 0 ? team.name.slice(idx + 3).trim() : team.name.trim();
+}
 
-  selects.forEach(sel => {
-    const currentVal = sel.value;
-    // Keep the first option
-    while (sel.options.length > 1) sel.remove(1);
-    teams.forEach(t => {
-      const opt = document.createElement('option');
-      opt.value = t.id;
-      opt.textContent = t.name;
-      sel.appendChild(opt);
+function getSelectedTeamIds() {
+  return Array.from(document.querySelectorAll('.email-team-checkbox:checked'))
+    .map(cb => parseInt(cb.value));
+}
+
+function renderEmailTeamCheckboxes() {
+  const container = document.getElementById('email-team-list');
+  if (!container) return;
+  const prevIds = getSelectedTeamIds();
+  container.innerHTML = '';
+  teams.forEach(t => {
+    const label = document.createElement('label');
+    label.className = 'team-checkbox-item';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.className = 'email-team-checkbox';
+    cb.value = t.id;
+    cb.checked = prevIds.includes(t.id);
+    cb.addEventListener('change', () => {
+      fetchScheduleIfReady();
+      loadEmailReminders();
     });
-    // Restore selection if it still exists
-    if (currentVal) sel.value = currentVal;
+    const span = document.createElement('span');
+    span.textContent = t.name;
+    label.appendChild(cb);
+    label.appendChild(span);
+    container.appendChild(label);
   });
+}
+
+function populateTeamDropdowns() {
+  // Player tab select
+  const playerSel = document.getElementById('player-team-select');
+  const currentVal = playerSel.value;
+  while (playerSel.options.length > 1) playerSel.remove(1);
+  teams.forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t.id;
+    opt.textContent = t.name;
+    playerSel.appendChild(opt);
+  });
+  if (currentVal) playerSel.value = currentVal;
+
+  // Generate tab checkbox list
+  renderEmailTeamCheckboxes();
 }
 
 function renderTeamsList() {
@@ -174,7 +206,8 @@ function setupTeamForm() {
       training_jersey: document.getElementById('training-jersey').value.trim(),
       home_jersey: document.getElementById('home-jersey').value.trim(),
       away_jersey: document.getElementById('away-jersey').value.trim(),
-      show_end_time: document.getElementById('show-end-time').checked ? 1 : 0
+      show_end_time: document.getElementById('show-end-time').checked ? 1 : 0,
+      short_name: document.getElementById('team-short-name').value.trim()
     };
 
     try {
@@ -208,6 +241,7 @@ function editTeam(id) {
   document.getElementById('home-jersey').value = team.home_jersey || '';
   document.getElementById('away-jersey').value = team.away_jersey || '';
   document.getElementById('show-end-time').checked = team.show_end_time !== 0;
+  document.getElementById('team-short-name').value = team.short_name || '';
   document.getElementById('team-submit-btn').textContent = 'Update Team';
   document.getElementById('team-cancel-btn').textContent = 'Cancel';
   document.getElementById('team-cancel-btn').style.display = 'inline-flex';
@@ -226,6 +260,7 @@ function cancelTeamEdit() {
   document.getElementById('home-jersey').value = '';
   document.getElementById('away-jersey').value = '';
   document.getElementById('show-end-time').checked = true;
+  document.getElementById('team-short-name').value = '';
   document.getElementById('team-submit-btn').textContent = 'Save Team';
   document.getElementById('team-cancel-btn').style.display = 'none';
   document.getElementById('team-reminders-card').style.display = 'none';
@@ -353,19 +388,16 @@ async function deletePlayer(id, name) {
 // SCHEDULE
 // ============================================================
 function setupScheduleListeners() {
-  document.getElementById('email-team').addEventListener('change', () => {
-    fetchScheduleIfReady();
-    loadEmailReminders();
-  });
+  // Team checkboxes are wired in renderEmailTeamCheckboxes()
   document.getElementById('email-week').addEventListener('change', fetchScheduleIfReady);
 }
 
 async function fetchScheduleIfReady() {
-  const teamId = document.getElementById('email-team').value;
+  const teamIds = getSelectedTeamIds();
   const weekStart = document.getElementById('email-week').value;
   const section = document.getElementById('schedule-section');
 
-  if (!teamId || !weekStart) {
+  if (teamIds.length === 0 || !weekStart) {
     section.style.display = 'none';
     return;
   }
@@ -375,35 +407,26 @@ async function fetchScheduleIfReady() {
   hint.textContent = 'Loading schedule from calendar...';
   hint.style.display = 'block';
 
-  // Build default schedule — each day is an array of events
+  const defaultDay = () => [{ type: 'Off', time: '', endTime: '', location: '', jersey: '', teamId: null }];
   currentSchedule = {};
-  DAYS.forEach(d => {
-    currentSchedule[d] = [{ type: 'Off', time: '', endTime: '', location: '', jersey: '' }];
-  });
+  DAYS.forEach(d => { currentSchedule[d] = defaultDay(); });
 
   try {
     const sunday = getSunday(weekStart);
-    const data = await api(`/api/schedule?team_id=${teamId}&week_start=${sunday}`);
+    const results = await Promise.all(
+      teamIds.map(id =>
+        api(`/api/schedule?team_id=${id}&week_start=${sunday}`)
+          .then(data => ({ teamId: id, schedule: data.schedule }))
+          .catch(() => ({ teamId: id, schedule: null }))
+      )
+    );
 
-    if (data.schedule) {
-      // Ensure each day is an array (iCal parser now returns arrays)
-      DAYS.forEach(d => {
-        const val = data.schedule[d];
-        if (Array.isArray(val)) {
-          // Add jersey field to each event and auto-assign
-          currentSchedule[d] = val.length > 0
-            ? val.map(e => ({ ...e, jersey: autoJersey(e.type) }))
-            : [{ type: 'Off', time: '', endTime: '', location: '', jersey: '' }];
-        } else if (val && typeof val === 'object') {
-          // Legacy single-event format
-          currentSchedule[d] = [{ ...val, jersey: autoJersey(val.type) }];
-        } else {
-          currentSchedule[d] = [{ type: 'Off', time: '', endTime: '', location: '', jersey: '' }];
-        }
-      });
+    const valid = results.filter(r => r.schedule);
+    if (valid.length > 0) {
+      currentSchedule = mergeSchedules(valid, teamIds[0]);
       hint.textContent = 'Schedule loaded from calendar. You can adjust below.';
     } else {
-      hint.textContent = data.message || 'No calendar configured. Fill in manually below.';
+      hint.textContent = 'No calendar configured. Fill in manually below.';
     }
   } catch (err) {
     hint.textContent = 'Could not load calendar. Fill in manually below.';
@@ -412,8 +435,56 @@ async function fetchScheduleIfReady() {
   renderScheduleGrid();
 }
 
-function getSelectedTeamJerseys() {
-  const teamId = document.getElementById('email-team').value;
+function mergeSchedules(results, primaryTeamId) {
+  const multiTeam = results.length > 1;
+  const merged = {};
+
+  DAYS.forEach(day => {
+    const allEvents = [];
+    results.forEach(({ teamId, schedule }) => {
+      const raw = schedule[day] || [];
+      const dayEvents = Array.isArray(raw) ? raw : [raw];
+      dayEvents.forEach(evt => {
+        allEvents.push({ ...evt, jersey: autoJersey(evt.type, teamId), teamId });
+      });
+    });
+
+    if (allEvents.length === 0) {
+      merged[day] = [{ type: 'Off', time: '', endTime: '', location: '', jersey: '', teamId: null }];
+      return;
+    }
+
+    // Deduplicate: same normalized type + same start time → shared event
+    const seen = new Map();
+    allEvents.forEach(evt => {
+      const key = (evt.type || '').toLowerCase().trim() + '|' + (evt.time || '');
+      if (seen.has(key)) {
+        seen.get(key).teamId = 'both';
+        seen.get(key).jersey = autoJersey(seen.get(key).type, primaryTeamId);
+      } else {
+        seen.set(key, { ...evt });
+      }
+    });
+
+    // For team-specific game events in multi-team mode, prefix type with short team name
+    const dayResult = Array.from(seen.values()).map(evt => {
+      if (multiTeam && evt.teamId !== 'both' && evt.teamId !== null) {
+        const team = teams.find(t => t.id === evt.teamId);
+        if (team && /^game (vs |@ )/i.test(evt.type)) {
+          const shortName = getTeamShortName(team);
+          return { ...evt, type: evt.type.replace(/^game /i, `${shortName} `) };
+        }
+      }
+      return evt;
+    });
+
+    merged[day] = dayResult;
+  });
+
+  return merged;
+}
+
+function getTeamJerseys(teamId) {
   const team = teams.find(t => String(t.id) === String(teamId));
   return {
     training: team?.training_jersey || '',
@@ -423,13 +494,13 @@ function getSelectedTeamJerseys() {
 }
 
 function getSelectedTeamShowEndTime() {
-  const teamId = document.getElementById('email-team').value;
-  const team = teams.find(t => String(t.id) === String(teamId));
+  const ids = getSelectedTeamIds();
+  const team = ids.length > 0 ? teams.find(t => t.id === ids[0]) : null;
   return team ? team.show_end_time !== 0 : true;
 }
 
-function autoJersey(eventType) {
-  const jerseys = getSelectedTeamJerseys();
+function autoJersey(eventType, teamId) {
+  const jerseys = getTeamJerseys(teamId || (getSelectedTeamIds()[0] || null));
   const t = (eventType || '').toLowerCase();
   if (t.startsWith('game @ ') || t.includes('away')) {
     return jerseys.away;
@@ -448,9 +519,10 @@ function renderScheduleGrid() {
   const container = document.createElement('div');
   container.className = 'schedule-grid';
   const showEndTime = getSelectedTeamShowEndTime();
+  const multiTeam = getSelectedTeamIds().length > 1;
 
   DAYS.forEach(day => {
-    const events = currentSchedule[day] || [{ type: 'Off', time: '', endTime: '', location: '', jersey: '' }];
+    const events = currentSchedule[day] || [{ type: 'Off', time: '', endTime: '', location: '', jersey: '', teamId: null }];
 
     const dayBlock = document.createElement('div');
     dayBlock.className = 'schedule-day-block';
@@ -470,11 +542,24 @@ function renderScheduleGrid() {
       const endTimeHtml = showEndTime
         ? `<input type="text" data-day="${day}" data-idx="${idx}" data-field="endTime" placeholder="End" value="${escAttr(entry.endTime || '')}" class="time-input">`
         : '';
+      let teamBadgeHtml = '';
+      if (multiTeam && entry.teamId) {
+        let label = '';
+        if (entry.teamId === 'both') {
+          label = 'Both';
+        } else {
+          const t = teams.find(t => t.id === entry.teamId);
+          label = t ? getTeamShortName(t) : '';
+        }
+        if (label) teamBadgeHtml = `<span class="team-badge">${escHtml(label)}</span>`;
+      }
       row.innerHTML = `
         <input type="text" list="event-types" data-day="${day}" data-idx="${idx}" data-field="type" placeholder="Off" value="${escAttr(entry.type)}">
         <input type="text" data-day="${day}" data-idx="${idx}" data-field="time" placeholder="Start" value="${escAttr(entry.time)}" class="time-input">${endTimeHtml}
         <input type="text" data-day="${day}" data-idx="${idx}" data-field="jersey" placeholder="Jersey" value="${escAttr(entry.jersey)}" class="jersey-input">
         <input type="text" data-day="${day}" data-idx="${idx}" data-field="location" placeholder="Location" value="${escAttr(entry.location)}">
+        <input type="hidden" data-day="${day}" data-idx="${idx}" data-field="teamId" value="${escAttr(String(entry.teamId || ''))}">
+        ${teamBadgeHtml}
         ${events.length > 1 ? `<button type="button" class="btn-remove-event" onclick="removeEvent('${day}', ${idx})" title="Remove event">&times;</button>` : ''}
       `;
       dayBlock.appendChild(row);
@@ -503,13 +588,14 @@ function renderScheduleGrid() {
       const day = el.dataset.day;
       const idx = parseInt(el.dataset.idx);
       const field = el.dataset.field;
-      if (!currentSchedule[day]) currentSchedule[day] = [{ type: 'Off', time: '', endTime: '', location: '', jersey: '' }];
+      if (!currentSchedule[day]) currentSchedule[day] = [{ type: 'Off', time: '', endTime: '', location: '', jersey: '', teamId: null }];
       if (!currentSchedule[day][idx]) return;
       currentSchedule[day][idx][field] = el.value;
 
       // Auto-assign jersey when event type changes
       if (field === 'type') {
-        const jersey = autoJersey(el.value);
+        const evtTeamId = currentSchedule[day][idx].teamId;
+        const jersey = autoJersey(el.value, evtTeamId);
         currentSchedule[day][idx].jersey = jersey;
         const jerseyInput = grid.querySelector(`[data-day="${day}"][data-idx="${idx}"][data-field="jersey"]`);
         if (jerseyInput) jerseyInput.value = jersey;
@@ -522,7 +608,7 @@ function renderScheduleGrid() {
 
 function addEvent(day) {
   if (!currentSchedule[day]) currentSchedule[day] = [];
-  currentSchedule[day].push({ type: 'Off', time: '', endTime: '', location: '', jersey: '' });
+  currentSchedule[day].push({ type: 'Off', time: '', endTime: '', location: '', jersey: '', teamId: null });
   renderScheduleGrid();
 }
 
@@ -537,10 +623,10 @@ function removeEvent(day, idx) {
 // ============================================================
 
 async function loadEmailReminders() {
-  const teamId = document.getElementById('email-team').value;
+  const teamIds = getSelectedTeamIds();
   const section = document.getElementById('reminders-section');
 
-  if (!teamId) {
+  if (teamIds.length === 0) {
     section.style.display = 'none';
     currentReminders = [];
     return;
@@ -549,12 +635,18 @@ async function loadEmailReminders() {
   section.style.display = 'block';
 
   try {
-    const reminders = await api(`/api/teams/${teamId}/reminders`);
-    currentReminders = reminders.map(r => ({
-      text: r.text,
-      isDefault: true,
-      checked: true
-    }));
+    const allReminders = await Promise.all(
+      teamIds.map(id => api(`/api/teams/${id}/reminders`).catch(() => []))
+    );
+    const seen = new Set();
+    currentReminders = allReminders.flat()
+      .filter(r => {
+        const key = r.text.trim().toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .map(r => ({ text: r.text, isDefault: true, checked: true }));
   } catch (err) {
     currentReminders = [];
   }
@@ -797,10 +889,10 @@ function setupEmailForm() {
   document.getElementById('email-form').addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const teamId = document.getElementById('email-team').value;
+    const teamIds = getSelectedTeamIds();
     const weekStart = document.getElementById('email-week').value;
 
-    if (!teamId) {
+    if (teamIds.length === 0) {
       showToast('Please select a team');
       return;
     }
@@ -808,32 +900,36 @@ function setupEmailForm() {
     // Read current schedule from the form inputs (multi-event per day)
     const scheduleFromForm = {};
     DAYS.forEach(day => {
-      const events = currentSchedule[day] || [{ type: 'Off', time: '', location: '', jersey: '' }];
+      const events = currentSchedule[day] || [{ type: 'Off', time: '', location: '', jersey: '', teamId: null }];
       scheduleFromForm[day] = events.map((entry, idx) => {
         const typeEl = document.querySelector(`[data-day="${day}"][data-idx="${idx}"][data-field="type"]`);
         const timeEl = document.querySelector(`[data-day="${day}"][data-idx="${idx}"][data-field="time"]`);
         const endTimeEl = document.querySelector(`[data-day="${day}"][data-idx="${idx}"][data-field="endTime"]`);
         const locEl = document.querySelector(`[data-day="${day}"][data-idx="${idx}"][data-field="location"]`);
         const jerseyEl = document.querySelector(`[data-day="${day}"][data-idx="${idx}"][data-field="jersey"]`);
+        const teamIdEl = document.querySelector(`[data-day="${day}"][data-idx="${idx}"][data-field="teamId"]`);
 
         return {
           type: typeEl ? typeEl.value : entry.type,
           time: timeEl ? timeEl.value : entry.time,
           endTime: endTimeEl ? endTimeEl.value : (entry.endTime || ''),
           location: locEl ? locEl.value : entry.location,
-          jersey: jerseyEl ? jerseyEl.value : entry.jersey
+          jersey: jerseyEl ? jerseyEl.value : entry.jersey,
+          teamId: teamIdEl ? teamIdEl.value || null : (entry.teamId || null)
         };
       });
     });
 
     const payload = {
-      team_id: parseInt(teamId),
+      team_id: teamIds[0],
+      team_ids: teamIds,
       week_start: getSunday(weekStart),
       schedule: scheduleFromForm,
       team_focus: document.getElementById('team-focus').value,
       homework_items: [...homeworkItems],
       personal_note: document.getElementById('personal-note').value,
       include_quote: document.getElementById('include-quote').checked,
+      include_birthdays: document.getElementById('include-birthdays').checked,
       reminders: currentReminders.filter(r => r.checked).map(r => r.text)
     };
 
