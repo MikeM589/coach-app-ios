@@ -27,8 +27,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     await window.dbService.initializeDatabase();
     loadTeams();
   } catch (err) {
-    console.error('Database initialization failed:', err);
-    showToast('Could not open database: ' + err.message);
+    console.error('Database initialization failed:', err?.message || err?.errorMessage || String(err));
+    showToast('Could not open database: ' + (err?.message || err?.errorMessage || String(err)));
   }
 });
 

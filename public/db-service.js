@@ -9,9 +9,10 @@ async function getDb() {
   if (!_dbPromise) {
     _dbPromise = (async () => {
       const sqlite = window.Capacitor.Plugins.CapacitorSQLite;
-      const { result } = await sqlite.isConnection({ database: DB_NAME, readonly: false });
-      if (!result) {
+      try {
         await sqlite.createConnection({ database: DB_NAME, encrypted: false, mode: 'no-encryption', version: 1, readonly: false });
+      } catch (_) {
+        // Connection already registered (e.g. after livereload) — proceed to open
       }
       await sqlite.open({ database: DB_NAME });
       return sqlite;
