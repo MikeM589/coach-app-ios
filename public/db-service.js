@@ -78,3 +78,45 @@ async function initializeDatabase() {
     }
   }
 }
+
+// ── Teams ──────────────────────────────────────────────
+
+async function getAllTeams() {
+  const db = await getDb();
+  const res = await db.query({ database: DB_NAME, statement: 'SELECT * FROM teams ORDER BY name', values: [] });
+  return res.values || [];
+}
+
+async function getTeam(id) {
+  const db = await getDb();
+  const res = await db.query({ database: DB_NAME, statement: 'SELECT * FROM teams WHERE id = ?', values: [id] });
+  return (res.values || [])[0] || null;
+}
+
+async function createTeam({ name, coach_name, ical_url, motto, salutation, phone, email, training_jersey, home_jersey, away_jersey, show_end_time, short_name }) {
+  const db = await getDb();
+  const showEnd = show_end_time != null ? show_end_time : 1;
+  await db.run({
+    database: DB_NAME,
+    statement: 'INSERT INTO teams (name, coach_name, ical_url, motto, salutation, phone, email, training_jersey, home_jersey, away_jersey, show_end_time, short_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    values: [name, coach_name, ical_url || '', motto || 'Bravery. Resilience. Excellence.', salutation != null ? salutation : 'See you all soon!', phone || '', email || '', training_jersey || '', home_jersey || '', away_jersey || '', showEnd, short_name || '']
+  });
+  const res = await db.query({ database: DB_NAME, statement: 'SELECT last_insert_rowid() as id', values: [] });
+  const id = (res.values[0] || {}).id;
+  return getTeam(id);
+}
+
+async function updateTeam(id, { name, coach_name, ical_url, motto, salutation, phone, email, training_jersey, home_jersey, away_jersey, show_end_time, short_name }) {
+  const db = await getDb();
+  await db.run({
+    database: DB_NAME,
+    statement: 'UPDATE teams SET name=?, coach_name=?, ical_url=?, motto=?, salutation=?, phone=?, email=?, training_jersey=?, home_jersey=?, away_jersey=?, show_end_time=?, short_name=? WHERE id=?',
+    values: [name, coach_name, ical_url || '', motto || 'Bravery. Resilience. Excellence.', salutation != null ? salutation : 'See you all soon!', phone || '', email || '', training_jersey || '', home_jersey || '', away_jersey || '', show_end_time != null ? show_end_time : 1, short_name || '', id]
+  });
+  return getTeam(id);
+}
+
+async function deleteTeam(id) {
+  const db = await getDb();
+  await db.execute({ database: DB_NAME, statements: `DELETE FROM players WHERE team_id = ${parseInt(id)}; DELETE FROM reminders WHERE team_id = ${parseInt(id)}; DELETE FROM teams WHERE id = ${parseInt(id)};` });
+}
