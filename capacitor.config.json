@@ -1,5 +1,5 @@
 {
-  "appId": "com.coach.emailgenerator",
+  "appId": "com.mikemortensen.coachemailgenerator",
   "appName": "Coach Email Generator",
   "webDir": "public"
 }
