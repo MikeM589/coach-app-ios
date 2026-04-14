@@ -96,6 +96,7 @@ header h1 {
   max-width: 860px;
   margin: 0 auto;
   padding: 0 1rem 3rem;
+  overflow-x: hidden;
 }
 
 /* ===== NAV ===== */
@@ -729,8 +730,17 @@ textarea { resize: vertical; }
   }
 
   .schedule-event-row {
-    grid-template-columns: 1fr 1fr auto;
+    grid-template-columns: 1fr 1fr;
     gap: 3px;
+  }
+
+  .schedule-event-row input[data-field="type"] {
+    grid-column: 1 / -1;
+  }
+
+  .schedule-event-row .btn-remove-event {
+    grid-column: 1 / -1;
+    justify-self: end;
   }
 
   .schedule-event-row .jersey-input,
