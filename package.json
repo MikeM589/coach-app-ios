@@ -13,7 +13,6 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
   "bugs": {
     "url": "https://github.com/MikeM589/coach-app-ios/issues"
   },
@@ -21,11 +20,10 @@
   "dependencies": {
     "@capacitor-community/sqlite": "^8.1.0",
     "@capacitor/core": "^8.3.0",
-    "@capacitor/http": "^0.0.2",
-    "@capacitor/ios": "^8.3.0",
-    "ical.js": "^2.2.1"
+    "@capacitor/ios": "^8.3.0"
   },
   "devDependencies": {
-    "@capacitor/cli": "^8.3.0"
+    "@capacitor/cli": "^8.3.0",
+    "ical.js": "^2.2.1"
   }
 }
