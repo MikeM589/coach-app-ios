@@ -84,4 +84,5 @@ function getRandomQuote() {
   return quotes[Math.floor(Math.random() * quotes.length)];
 }
 
-module.exports = { quotes, getQuoteForWeek, getRandomQuote };
+window.getQuoteForWeek = getQuoteForWeek;
+window.getRandomQuote = getRandomQuote;

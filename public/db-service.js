@@ -9,7 +9,11 @@ async function getDb() {
   if (!_dbPromise) {
     _dbPromise = (async () => {
       const sqlite = window.Capacitor.Plugins.CapacitorSQLite;
-      await sqlite.open({ database: DB_NAME, readonly: false });
+      const { result } = await sqlite.isConnection({ database: DB_NAME, readonly: false });
+      if (!result) {
+        await sqlite.createConnection({ database: DB_NAME, encrypted: false, mode: 'no-encryption', version: 1, readonly: false });
+      }
+      await sqlite.open({ database: DB_NAME });
       return sqlite;
     })();
   }
