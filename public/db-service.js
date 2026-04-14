@@ -3,16 +3,17 @@
 // Uses @capacitor-community/sqlite via window.Capacitor.Plugins.CapacitorSQLite.
 
 const DB_NAME = 'coachdb';
-let _db = null;
+let _dbPromise = null;
 
 async function getDb() {
-  if (_db) return _db;
-  const sqlite = window.Capacitor.Plugins.CapacitorSQLite;
-
-  // Open (or create) the database
-  await sqlite.open({ database: DB_NAME, readonly: false });
-  _db = sqlite;
-  return _db;
+  if (!_dbPromise) {
+    _dbPromise = (async () => {
+      const sqlite = window.Capacitor.Plugins.CapacitorSQLite;
+      await sqlite.open({ database: DB_NAME, readonly: false });
+      return sqlite;
+    })();
+  }
+  return _dbPromise;
 }
 
 async function initializeDatabase() {
@@ -117,8 +118,12 @@ async function updateTeam(id, { name, coach_name, ical_url, motto, salutation, p
 }
 
 async function deleteTeam(id) {
+  const numId = parseInt(id);
+  if (!Number.isFinite(numId)) return;
   const db = await getDb();
-  await db.execute({ database: DB_NAME, statements: `DELETE FROM players WHERE team_id = ${parseInt(id)}; DELETE FROM reminders WHERE team_id = ${parseInt(id)}; DELETE FROM teams WHERE id = ${parseInt(id)};` });
+  await db.run({ database: DB_NAME, statement: 'DELETE FROM players WHERE team_id = ?', values: [numId] });
+  await db.run({ database: DB_NAME, statement: 'DELETE FROM reminders WHERE team_id = ?', values: [numId] });
+  await db.run({ database: DB_NAME, statement: 'DELETE FROM teams WHERE id = ?', values: [numId] });
 }
 
 // ── Players ─────────────────────────────────────────────
