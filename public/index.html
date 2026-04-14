@@ -49,86 +49,111 @@
       <!-- ===== GENERATE EMAIL TAB ===== -->
       <section id="tab-generate" class="tab-content active">
 
-        <div class="card">
-          <div class="card-header">
-            <h2>Create Weekly Email</h2>
-          </div>
-          <form id="email-form">
-            <div class="form-row">
-              <div class="form-group">
-                <label>Team(s)</label>
-                <div id="email-team-list" class="team-checkbox-list"></div>
-              </div>
-              <div class="form-group">
-                <label for="email-week">Week Starting (Sunday)</label>
-                <input type="date" id="email-week" required>
-              </div>
-            </div>
-
-            <div class="schedule-section" id="schedule-section" style="display:none;">
-              <div class="section-label">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1.5" y="2.5" width="13" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M1.5 6.5h13M5 1v3M11 1v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-                Weekly Schedule
-              </div>
-              <p class="hint-text" id="schedule-hint">Loading schedule from calendar...</p>
-              <div id="schedule-grid"></div>
-            </div>
-
-            <div class="form-group">
-              <label for="team-focus">Team Focus This Week</label>
-              <textarea id="team-focus" rows="2" placeholder="e.g., First touch and ball control under pressure"></textarea>
-            </div>
-
-            <div class="inline-section homework-section">
-              <div class="section-label">Homework</div>
-              <p class="hint-text">Each entry becomes a bullet point in the email.</p>
-              <div id="homework-list" class="checklist"></div>
-              <div class="add-row">
-                <input type="text" id="homework-add-input" placeholder="e.g., Watch video and note player movement off the ball">
-                <button type="button" class="btn btn-add" onclick="addHomeworkItem()">Add</button>
-              </div>
-            </div>
-
-            <div class="inline-section reminders-section" id="reminders-section" style="display:none;">
-              <div class="section-label">Reminders</div>
-              <p class="hint-text">Uncheck to exclude this week, or add one-off reminders.</p>
-              <div id="reminders-checklist" class="checklist"></div>
-              <div class="add-row">
-                <input type="text" id="reminder-add-input" placeholder="Add a one-time reminder...">
-                <button type="button" class="btn btn-add" onclick="addOneOffReminder()">Add</button>
-              </div>
-            </div>
-
-            <div class="form-row checkbox-row">
-              <div class="form-group checkbox-group">
-                <label>
-                  <input type="checkbox" id="include-birthdays" checked>
-                  <span class="check-label">Include player birthdays</span>
-                </label>
-              </div>
-              <div class="form-group checkbox-group">
-                <label>
-                  <input type="checkbox" id="include-quote" checked>
-                  <span class="check-label">Include an inspirational quote</span>
-                </label>
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label for="personal-note">Personal Note <span class="optional">(optional)</span></label>
-              <textarea id="personal-note" rows="2" placeholder="Any personal message for the team..."></textarea>
-            </div>
-
-            <button type="submit" class="btn btn-primary btn-generate">Generate Email</button>
-          </form>
+        <div class="email-subtab-nav">
+          <button type="button" class="email-subtab-btn active" data-subtab="schedule">Schedule</button>
+          <button type="button" class="email-subtab-btn" data-subtab="settings">Settings</button>
+          <button type="button" class="email-subtab-btn" data-subtab="note">Note</button>
+          <button type="button" class="email-subtab-btn" data-subtab="message">Message</button>
         </div>
 
-        <div class="card card-output" id="output-card" style="display:none;">
-          <div class="card-header">
-            <h2>Generated Email</h2>
+        <form id="email-form">
+
+          <!-- ── Panel 1: Schedule ────────────────────────── -->
+          <div class="email-subtab-panel active" data-subtab="schedule">
+            <div class="card">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Team(s)</label>
+                  <div id="email-team-list" class="team-checkbox-list"></div>
+                </div>
+                <div class="form-group">
+                  <label for="email-week">Week Starting (Sunday)</label>
+                  <input type="date" id="email-week" required>
+                </div>
+              </div>
+
+              <div class="schedule-section" id="schedule-section" style="display:none;">
+                <div class="section-label">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1.5" y="2.5" width="13" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M1.5 6.5h13M5 1v3M11 1v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                  Weekly Schedule
+                </div>
+                <p class="hint-text" id="schedule-hint">Loading schedule from calendar...</p>
+                <div id="schedule-grid"></div>
+              </div>
+
+              <button type="submit" class="btn btn-primary btn-generate">Generate Message</button>
+            </div>
           </div>
-          <div id="output-messages"></div>
-        </div>
+
+          <!-- ── Panel 2: Settings ───────────────────────── -->
+          <div class="email-subtab-panel" data-subtab="settings">
+            <div class="card">
+              <div class="form-group">
+                <label for="team-focus">Team Focus This Week</label>
+                <textarea id="team-focus" rows="2" placeholder="e.g., First touch and ball control under pressure"></textarea>
+              </div>
+
+              <div class="inline-section homework-section">
+                <div class="section-label">Homework</div>
+                <p class="hint-text">Each entry becomes a bullet point in the email.</p>
+                <div id="homework-list" class="checklist"></div>
+                <div class="add-row">
+                  <input type="text" id="homework-add-input" placeholder="e.g., Watch video and note player movement off the ball">
+                  <button type="button" class="btn btn-add" onclick="addHomeworkItem()">Add</button>
+                </div>
+              </div>
+
+              <div class="inline-section reminders-section" id="reminders-section" style="display:none;">
+                <div class="section-label">Reminders</div>
+                <p class="hint-text">Uncheck to exclude this week, or add one-off reminders.</p>
+                <div id="reminders-checklist" class="checklist"></div>
+                <div class="add-row">
+                  <input type="text" id="reminder-add-input" placeholder="Add a one-time reminder...">
+                  <button type="button" class="btn btn-add" onclick="addOneOffReminder()">Add</button>
+                </div>
+              </div>
+
+              <div class="form-row checkbox-row">
+                <div class="form-group checkbox-group">
+                  <label>
+                    <input type="checkbox" id="include-birthdays" checked>
+                    <span class="check-label">Include player birthdays</span>
+                  </label>
+                </div>
+                <div class="form-group checkbox-group">
+                  <label>
+                    <input type="checkbox" id="include-quote" checked>
+                    <span class="check-label">Include an inspirational quote</span>
+                  </label>
+                </div>
+              </div>
+
+              <button type="submit" class="btn btn-primary btn-generate">Generate Message</button>
+            </div>
+          </div>
+
+          <!-- ── Panel 3: Note ──────────────────────────── -->
+          <div class="email-subtab-panel" data-subtab="note">
+            <div class="card">
+              <div class="form-group">
+                <label for="personal-note">Personal Note <span class="optional">(optional)</span></label>
+                <textarea id="personal-note" rows="5" placeholder="Any personal message for the team..."></textarea>
+              </div>
+              <button type="submit" class="btn btn-primary btn-generate">Generate Message</button>
+            </div>
+          </div>
+
+          <!-- ── Panel 4: Message (output) ──────────────── -->
+          <div class="email-subtab-panel" data-subtab="message">
+            <div class="card card-output" id="output-card">
+              <div class="card-header">
+                <h2>Generated Email</h2>
+              </div>
+              <div id="output-messages"></div>
+            </div>
+          </div>
+
+        </form>
 
       </section>
 

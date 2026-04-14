@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupNav();
   setDefaultWeek();
   setupEmailForm();
+  setupEmailSubTabs();
   setupTeamForm();
   setupPlayerTeamSelect();
   setupPlayerForm();
@@ -82,6 +83,22 @@ function refreshCurrentTab() {
     loadEmailReminders();
     fetchScheduleIfReady();
   }
+}
+
+// ============================================================
+// EMAIL SUB-TABS
+// ============================================================
+function setupEmailSubTabs() {
+  document.querySelectorAll('.email-subtab-btn').forEach(btn => {
+    btn.addEventListener('click', () => switchEmailSubTab(btn.dataset.subtab));
+  });
+}
+
+function switchEmailSubTab(name) {
+  document.querySelectorAll('.email-subtab-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.subtab === name));
+  document.querySelectorAll('.email-subtab-panel').forEach(p =>
+    p.classList.toggle('active', p.dataset.subtab === name));
 }
 
 // ============================================================
@@ -1018,8 +1035,7 @@ function setupEmailForm() {
     try {
       const result = await window.buildEmailMessages(payload);
       renderEmailOutput(result.messages);
-      document.getElementById('output-card').style.display = 'block';
-      document.getElementById('output-card').scrollIntoView({ behavior: 'smooth' });
+      switchEmailSubTab('message');
     } catch (err) {
       showToast('Error generating email: ' + err.message);
     }
