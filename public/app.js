@@ -268,6 +268,10 @@ function renderTeamsList() {
 }
 
 function setupTeamForm() {
+  document.getElementById('coach-phone').addEventListener('input', (e) => {
+    e.target.value = formatPhoneNumber(e.target.value);
+  });
+
   document.getElementById('team-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const editId = document.getElementById('team-edit-id').value;
@@ -311,7 +315,7 @@ function editTeam(id) {
   document.getElementById('ical-url').value = team.ical_url || '';
   document.getElementById('team-motto').value = team.motto;
   document.getElementById('team-salutation').value = team.salutation != null ? team.salutation : 'See you all soon!';
-  document.getElementById('coach-phone').value = team.phone || '';
+  document.getElementById('coach-phone').value = formatPhoneNumber(team.phone || '');
   document.getElementById('coach-email').value = team.email || '';
   document.getElementById('training-jersey').value = team.training_jersey || '';
   document.getElementById('home-jersey').value = team.home_jersey || '';
@@ -1077,6 +1081,13 @@ function copyMessage(btn, textarea) {
 // ============================================================
 // ESCAPE HELPERS
 // ============================================================
+function formatPhoneNumber(value) {
+  const digits = (value || '').replace(/\D/g, '').slice(0, 10);
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
+
 function escHtml(str) {
   if (!str) return '';
   const div = document.createElement('div');
