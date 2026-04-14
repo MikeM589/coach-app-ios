@@ -137,6 +137,27 @@
 
         <div class="card">
           <div class="card-header">
+            <h3>Your Teams</h3>
+          </div>
+          <div id="teams-list" class="item-list">
+            <p class="empty-state">No teams yet. Create one below.</p>
+          </div>
+        </div>
+
+        <div class="card" id="team-reminders-card" style="display:none;">
+          <div class="card-header">
+            <h3>Default Reminders</h3>
+            <p class="hint-text">Pre-loaded into every weekly email for this team.</p>
+          </div>
+          <div id="team-reminders-list" class="item-list"></div>
+          <div class="add-row" style="margin-top: 0.75rem;">
+            <input type="text" id="team-reminder-input" placeholder="e.g., Bring shin guards to every session">
+            <button type="button" class="btn btn-add" onclick="addTeamReminder()">Add</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
             <h2>Team Setup</h2>
           </div>
           <form id="team-form">
@@ -215,26 +236,6 @@
           </form>
         </div>
 
-        <div class="card" id="team-reminders-card" style="display:none;">
-          <div class="card-header">
-            <h3>Default Reminders</h3>
-            <p class="hint-text">Pre-loaded into every weekly email for this team.</p>
-          </div>
-          <div id="team-reminders-list" class="item-list"></div>
-          <div class="add-row" style="margin-top: 0.75rem;">
-            <input type="text" id="team-reminder-input" placeholder="e.g., Bring shin guards to every session">
-            <button type="button" class="btn btn-add" onclick="addTeamReminder()">Add</button>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header">
-            <h3>Your Teams</h3>
-          </div>
-          <div id="teams-list" class="item-list">
-            <p class="empty-state">No teams yet. Create one above.</p>
-          </div>
-        </div>
 
       </section>
 

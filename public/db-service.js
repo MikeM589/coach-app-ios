@@ -5,6 +5,12 @@
 const DB_NAME = 'coachdb';
 let _dbPromise = null;
 
+// Capacitor SQLite on iOS prepends an {ios_columns:[...]} metadata object to
+// every query result. Filter it so callers always receive plain data rows.
+function rows(res) {
+  return (res.values || []).filter(v => v && !v.ios_columns);
+}
+
 async function getDb() {
   if (!_dbPromise) {
     _dbPromise = (async () => {
@@ -90,13 +96,13 @@ async function initializeDatabase() {
 async function getAllTeams() {
   const db = await getDb();
   const res = await db.query({ database: DB_NAME, statement: 'SELECT * FROM teams ORDER BY name', values: [] });
-  return res.values || [];
+  return rows(res);
 }
 
 async function getTeam(id) {
   const db = await getDb();
   const res = await db.query({ database: DB_NAME, statement: 'SELECT * FROM teams WHERE id = ?', values: [id] });
-  return (res.values || [])[0] || null;
+  return rows(res)[0] || null;
 }
 
 async function createTeam({ name, coach_name, ical_url, motto, salutation, phone, email, training_jersey, home_jersey, away_jersey, show_end_time, short_name }) {
@@ -108,27 +114,29 @@ async function createTeam({ name, coach_name, ical_url, motto, salutation, phone
     values: [name, coach_name, ical_url || '', motto || 'Bravery. Resilience. Excellence.', salutation != null ? salutation : 'See you all soon!', phone || '', email || '', training_jersey || '', home_jersey || '', away_jersey || '', showEnd, short_name || '']
   });
   const res = await db.query({ database: DB_NAME, statement: 'SELECT last_insert_rowid() as id', values: [] });
-  const id = (res.values[0] || {}).id;
+  const id = (rows(res)[0] || {}).id;
   return getTeam(id);
 }
 
 async function updateTeam(id, { name, coach_name, ical_url, motto, salutation, phone, email, training_jersey, home_jersey, away_jersey, show_end_time, short_name }) {
+  const numId = parseInt(id);
   const db = await getDb();
-  await db.run({
+  const showEnd = show_end_time != null ? show_end_time : 1;
+  const esc = s => String(s || '').replace(/'/g, "''");
+  await db.execute({
     database: DB_NAME,
-    statement: 'UPDATE teams SET name=?, coach_name=?, ical_url=?, motto=?, salutation=?, phone=?, email=?, training_jersey=?, home_jersey=?, away_jersey=?, show_end_time=?, short_name=? WHERE id=?',
-    values: [name, coach_name, ical_url || '', motto || 'Bravery. Resilience. Excellence.', salutation != null ? salutation : 'See you all soon!', phone || '', email || '', training_jersey || '', home_jersey || '', away_jersey || '', show_end_time != null ? show_end_time : 1, short_name || '', id]
+    statements: `UPDATE teams SET name='${esc(name)}', coach_name='${esc(coach_name)}', ical_url='${esc(ical_url || '')}', motto='${esc(motto || 'Bravery. Resilience. Excellence.')}', salutation='${esc(salutation != null ? salutation : 'See you all soon!')}', phone='${esc(phone || '')}', email='${esc(email || '')}', training_jersey='${esc(training_jersey || '')}', home_jersey='${esc(home_jersey || '')}', away_jersey='${esc(away_jersey || '')}', show_end_time=${showEnd}, short_name='${esc(short_name || '')}' WHERE id=${numId}`
   });
-  return getTeam(id);
+  return getTeam(numId);
 }
 
 async function deleteTeam(id) {
   const numId = parseInt(id);
   if (!Number.isFinite(numId)) return;
   const db = await getDb();
-  await db.run({ database: DB_NAME, statement: 'DELETE FROM players WHERE team_id = ?', values: [numId] });
-  await db.run({ database: DB_NAME, statement: 'DELETE FROM reminders WHERE team_id = ?', values: [numId] });
-  await db.run({ database: DB_NAME, statement: 'DELETE FROM teams WHERE id = ?', values: [numId] });
+  await db.execute({ database: DB_NAME, statements: `DELETE FROM players WHERE team_id = ${numId}` });
+  await db.execute({ database: DB_NAME, statements: `DELETE FROM reminders WHERE team_id = ${numId}` });
+  await db.execute({ database: DB_NAME, statements: `DELETE FROM teams WHERE id = ${numId}` });
 }
 
 // ── Players ─────────────────────────────────────────────
@@ -136,7 +144,7 @@ async function deleteTeam(id) {
 async function getPlayersByTeam(teamId) {
   const db = await getDb();
   const res = await db.query({ database: DB_NAME, statement: 'SELECT * FROM players WHERE team_id = ? ORDER BY name', values: [teamId] });
-  return res.values || [];
+  return rows(res);
 }
 
 async function createPlayer({ team_id, name, birthday }) {
@@ -147,7 +155,7 @@ async function createPlayer({ team_id, name, birthday }) {
     values: [team_id, name, birthday || '']
   });
   const res = await db.query({ database: DB_NAME, statement: 'SELECT last_insert_rowid() as id', values: [] });
-  const id = (res.values[0] || {}).id;
+  const id = (rows(res)[0] || {}).id;
   return { id, team_id, name, birthday: birthday || '' };
 }
 
@@ -155,12 +163,14 @@ async function updatePlayer(id, { name, birthday }) {
   const db = await getDb();
   await db.run({ database: DB_NAME, statement: 'UPDATE players SET name=?, birthday=? WHERE id=?', values: [name, birthday || '', id] });
   const res = await db.query({ database: DB_NAME, statement: 'SELECT * FROM players WHERE id = ?', values: [id] });
-  return (res.values || [])[0] || null;
+  return rows(res)[0] || null;
 }
 
 async function deletePlayer(id) {
+  const numId = parseInt(id);
+  if (!Number.isFinite(numId)) return;
   const db = await getDb();
-  await db.run({ database: DB_NAME, statement: 'DELETE FROM players WHERE id = ?', values: [id] });
+  await db.execute({ database: DB_NAME, statements: `DELETE FROM players WHERE id = ${numId}` });
 }
 
 async function getUpcomingBirthdays(teamId, weekStart, weekEnd) {
@@ -187,20 +197,22 @@ async function getUpcomingBirthdays(teamId, weekStart, weekEnd) {
 async function getRemindersByTeam(teamId) {
   const db = await getDb();
   const res = await db.query({ database: DB_NAME, statement: 'SELECT * FROM reminders WHERE team_id = ? ORDER BY id', values: [teamId] });
-  return res.values || [];
+  return rows(res);
 }
 
 async function createReminder({ team_id, text }) {
   const db = await getDb();
   await db.run({ database: DB_NAME, statement: 'INSERT INTO reminders (team_id, text) VALUES (?, ?)', values: [team_id, text] });
   const res = await db.query({ database: DB_NAME, statement: 'SELECT last_insert_rowid() as id', values: [] });
-  const id = (res.values[0] || {}).id;
+  const id = (rows(res)[0] || {}).id;
   return { id, team_id, text };
 }
 
 async function deleteReminder(id) {
+  const numId = parseInt(id);
+  if (!Number.isFinite(numId)) return;
   const db = await getDb();
-  await db.run({ database: DB_NAME, statement: 'DELETE FROM reminders WHERE id = ?', values: [id] });
+  await db.execute({ database: DB_NAME, statements: `DELETE FROM reminders WHERE id = ${numId}` });
 }
 
 // Expose as global so app.js and email-builder.js can call it

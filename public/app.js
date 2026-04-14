@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupPlayerForm();
   setupScheduleListeners();
   setupReminderInputs();
+  setupPullToRefresh();
 
   // Initialize database then load data
   try {
@@ -31,6 +32,57 @@ document.addEventListener('DOMContentLoaded', async () => {
     showToast('Could not open database: ' + (err?.message || err?.errorMessage || String(err)));
   }
 });
+
+// ============================================================
+// PULL-TO-REFRESH
+// ============================================================
+function setupPullToRefresh() {
+  const indicator = document.createElement('div');
+  indicator.id = 'pull-indicator';
+  indicator.textContent = '↓ Pull to refresh';
+  document.body.prepend(indicator);
+
+  let startY = 0;
+  const THRESHOLD = 80;
+
+  document.addEventListener('touchstart', e => {
+    if (window.scrollY <= 10) startY = e.touches[0].pageY;
+  }, { passive: true });
+
+  document.addEventListener('touchmove', e => {
+    if (!startY) return;
+    const dy = e.touches[0].pageY - startY;
+    if (dy > 10) {
+      const progress = Math.min(dy, THRESHOLD + 20);
+      indicator.style.transform = `translateY(${progress}px)`;
+      indicator.textContent = dy > THRESHOLD ? '↑ Release to refresh' : '↓ Pull to refresh';
+    }
+  }, { passive: true });
+
+  document.addEventListener('touchend', e => {
+    if (!startY) return;
+    const dy = e.changedTouches[0].pageY - startY;
+    startY = 0;
+    indicator.style.transform = '';
+    indicator.textContent = '↓ Pull to refresh';
+    if (dy > THRESHOLD) refreshCurrentTab();
+  }, { passive: true });
+}
+
+function refreshCurrentTab() {
+  const tab = document.querySelector('.tab-btn.active')?.dataset?.tab;
+  if (tab === 'teams') {
+    loadTeams();
+  } else if (tab === 'players') {
+    loadTeams();
+    const teamId = document.getElementById('player-team-select').value;
+    if (teamId) loadPlayers(teamId);
+  } else if (tab === 'email') {
+    loadTeams();
+    loadEmailReminders();
+    fetchScheduleIfReady();
+  }
+}
 
 // ============================================================
 // NAVIGATION
