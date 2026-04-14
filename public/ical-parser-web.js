@@ -17,7 +17,7 @@ async function getWeekSchedule(url, weekStartStr) {
 
   let icalText;
   try {
-    const response = await Capacitor.CapacitorHttp.get({ url, headers: {} });
+    const response = await Capacitor.Plugins.CapacitorHttp.get({ url, headers: {} });
     icalText = response.data;
   } catch (err) {
     throw new Error('Failed to fetch calendar: ' + err.message);

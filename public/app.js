@@ -61,7 +61,31 @@ function showToast(msg) {
   setTimeout(() => toast.classList.remove('show'), 2500);
 }
 
-
+function showConfirm(message) {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    const dialog = document.createElement('div');
+    dialog.className = 'confirm-dialog';
+    const p = document.createElement('p');
+    p.className = 'confirm-message';
+    p.textContent = message;
+    const btns = document.createElement('div');
+    btns.className = 'confirm-buttons';
+    const cancel = document.createElement('button');
+    cancel.className = 'btn btn-secondary';
+    cancel.textContent = 'Cancel';
+    const ok = document.createElement('button');
+    ok.className = 'btn btn-danger';
+    ok.textContent = 'Delete';
+    btns.append(cancel, ok);
+    dialog.append(p, btns);
+    overlay.append(dialog);
+    document.body.appendChild(overlay);
+    cancel.addEventListener('click', () => { overlay.remove(); resolve(false); });
+    ok.addEventListener('click', () => { overlay.remove(); resolve(true); });
+  });
+}
 
 function getSunday(dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
@@ -267,7 +291,7 @@ function cancelTeamEdit() {
 }
 
 async function deleteTeam(id, name) {
-  if (!confirm(`Delete team "${name}" and all its players?`)) return;
+  if (!await showConfirm(`Delete team "${name}" and all its players?`)) return;
   try {
     await window.dbService.deleteTeam(id);
     showToast('Team deleted');
@@ -373,7 +397,7 @@ function cancelPlayerEdit() {
 }
 
 async function deletePlayer(id, name) {
-  if (!confirm(`Remove ${name} from the team?`)) return;
+  if (!await showConfirm(`Remove ${name} from the team?`)) return;
   try {
     await window.dbService.deletePlayer(id);
     showToast('Player removed');
