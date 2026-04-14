@@ -1,0 +1,31 @@
+{
+  "name": "coach-app-ios",
+  "version": "1.0.0",
+  "description": "Coach Email Generator — iOS",
+  "scripts": {
+    "sync": "npx cap sync ios",
+    "open": "npx cap open ios"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MikeM589/coach-app-ios.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/MikeM589/coach-app-ios/issues"
+  },
+  "homepage": "https://github.com/MikeM589/coach-app-ios#readme",
+  "dependencies": {
+    "@capacitor-community/sqlite": "^8.1.0",
+    "@capacitor/core": "^8.3.0",
+    "@capacitor/http": "^0.0.2",
+    "@capacitor/ios": "^8.3.0",
+    "ical.js": "^2.2.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.3.0"
+  }
+}

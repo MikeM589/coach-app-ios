@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Coach's Weekly Email Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Sans:wght@700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <div class="header-brand">
+        <div class="brand-icon">
+          <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="28" height="28">
+            <circle cx="16" cy="16" r="15" stroke="currentColor" stroke-width="2"/>
+            <path d="M16 1C16 1 16 16 16 31" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M1.5 12C8 12 16 6 16 6C16 6 24 12 30.5 12" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M1.5 20C8 20 16 26 16 26C16 26 24 20 30.5 20" stroke="currentColor" stroke-width="1.5"/>
+          </svg>
+        </div>
+        <div>
+          <h1>Weekly Email Generator</h1>
+          <p class="header-sub">Build and send your team's weekly update</p>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="app-shell">
+    <nav>
+      <button class="nav-btn active" data-tab="generate">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 3h12M2 6.5h8M2 10h10M2 13.5h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Generate
+      </button>
+      <button class="nav-btn" data-tab="teams">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M2 14c0-3.3 2.7-5 6-5s6 1.7 6 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Teams
+      </button>
+      <button class="nav-btn" data-tab="players">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="5.5" cy="5" r="2.5" stroke="currentColor" stroke-width="1.5"/><circle cx="11" cy="5.5" r="2" stroke="currentColor" stroke-width="1.2"/><path d="M1 14c0-2.8 2-4.5 4.5-4.5s4.5 1.7 4.5 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M10 9.5c1.8 0 3.5 1.2 3.5 3.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        Players
+      </button>
+    </nav>
+
+    <main>
+      <!-- ===== GENERATE EMAIL TAB ===== -->
+      <section id="tab-generate" class="tab-content active">
+
+        <div class="card">
+          <div class="card-header">
+            <h2>Create Weekly Email</h2>
+          </div>
+          <form id="email-form">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Team(s)</label>
+                <div id="email-team-list" class="team-checkbox-list"></div>
+              </div>
+              <div class="form-group">
+                <label for="email-week">Week Starting (Sunday)</label>
+                <input type="date" id="email-week" required>
+              </div>
+            </div>
+
+            <div class="schedule-section" id="schedule-section" style="display:none;">
+              <div class="section-label">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1.5" y="2.5" width="13" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M1.5 6.5h13M5 1v3M11 1v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                Weekly Schedule
+              </div>
+              <p class="hint-text" id="schedule-hint">Loading schedule from calendar...</p>
+              <div id="schedule-grid"></div>
+            </div>
+
+            <div class="form-group">
+              <label for="team-focus">Team Focus This Week</label>
+              <textarea id="team-focus" rows="2" placeholder="e.g., First touch and ball control under pressure"></textarea>
+            </div>
+
+            <div class="inline-section homework-section">
+              <div class="section-label">Homework</div>
+              <p class="hint-text">Each entry becomes a bullet point in the email.</p>
+              <div id="homework-list" class="checklist"></div>
+              <div class="add-row">
+                <input type="text" id="homework-add-input" placeholder="e.g., Watch video and note player movement off the ball">
+                <button type="button" class="btn btn-add" onclick="addHomeworkItem()">Add</button>
+              </div>
+            </div>
+
+            <div class="inline-section reminders-section" id="reminders-section" style="display:none;">
+              <div class="section-label">Reminders</div>
+              <p class="hint-text">Uncheck to exclude this week, or add one-off reminders.</p>
+              <div id="reminders-checklist" class="checklist"></div>
+              <div class="add-row">
+                <input type="text" id="reminder-add-input" placeholder="Add a one-time reminder...">
+                <button type="button" class="btn btn-add" onclick="addOneOffReminder()">Add</button>
+              </div>
+            </div>
+
+            <div class="form-row checkbox-row">
+              <div class="form-group checkbox-group">
+                <label>
+                  <input type="checkbox" id="include-birthdays" checked>
+                  <span class="check-label">Include player birthdays</span>
+                </label>
+              </div>
+              <div class="form-group checkbox-group">
+                <label>
+                  <input type="checkbox" id="include-quote" checked>
+                  <span class="check-label">Include an inspirational quote</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="personal-note">Personal Note <span class="optional">(optional)</span></label>
+              <textarea id="personal-note" rows="2" placeholder="Any personal message for the team..."></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-generate">Generate Email</button>
+          </form>
+        </div>
+
+        <div class="card card-output" id="output-card" style="display:none;">
+          <div class="card-header">
+            <h2>Generated Email</h2>
+          </div>
+          <div id="output-messages"></div>
+        </div>
+
+      </section>
+
+      <!-- ===== TEAMS TAB ===== -->
+      <section id="tab-teams" class="tab-content">
+
+        <div class="card">
+          <div class="card-header">
+            <h2>Team Setup</h2>
+          </div>
+          <form id="team-form">
+            <input type="hidden" id="team-edit-id">
+
+            <fieldset class="form-fieldset">
+              <legend>Basics</legend>
+              <div class="form-group">
+                <label for="team-name">Team Name</label>
+                <input type="text" id="team-name" required placeholder="e.g., FC Lightning U10">
+              </div>
+              <div class="form-group">
+                <label for="team-short-name">Short Name <span class="optional">(used in multi-team emails)</span></label>
+                <input type="text" id="team-short-name" placeholder="e.g., Blue">
+              </div>
+              <div class="form-group">
+                <label for="ical-url">iCal Calendar URL <span class="optional">(optional)</span></label>
+                <input type="url" id="ical-url" placeholder="https://calendar.google.com/calendar/ical/...">
+              </div>
+              <div class="form-group checkbox-group">
+                <label>
+                  <input type="checkbox" id="show-end-time" checked>
+                  Include end time for events
+                </label>
+              </div>
+            </fieldset>
+
+            <fieldset class="form-fieldset">
+              <legend>Sign-off &amp; Contact</legend>
+              <div class="form-group">
+                <label for="coach-name">Coach Name</label>
+                <input type="text" id="coach-name" required placeholder="e.g., Coach Mike">
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="coach-phone">Coach Phone <span class="optional">(optional)</span></label>
+                  <input type="tel" id="coach-phone" placeholder="(555) 123-4567">
+                </div>
+                <div class="form-group">
+                  <label for="coach-email">Coach Email <span class="optional">(optional)</span></label>
+                  <input type="email" id="coach-email" placeholder="coach@example.com">
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="team-salutation">Salutation <span class="optional">(leave empty to omit)</span></label>
+                <input type="text" id="team-salutation" value="See you all soon!" placeholder="e.g., See you all soon!">
+              </div>
+              <div class="form-group">
+                <label for="team-motto">Team Motto <span class="optional">(leave empty to omit)</span></label>
+                <input type="text" id="team-motto" value="Bravery. Resilience. Excellence." placeholder="Team motto">
+              </div>
+            </fieldset>
+
+            <fieldset class="form-fieldset">
+              <legend>Jerseys</legend>
+              <div class="form-row form-row-3">
+                <div class="form-group">
+                  <label for="training-jersey">Training</label>
+                  <input type="text" id="training-jersey" placeholder="e.g., Green pinny">
+                </div>
+                <div class="form-group">
+                  <label for="home-jersey">Home</label>
+                  <input type="text" id="home-jersey" placeholder="e.g., White kit">
+                </div>
+                <div class="form-group">
+                  <label for="away-jersey">Away</label>
+                  <input type="text" id="away-jersey" placeholder="e.g., Green kit">
+                </div>
+              </div>
+            </fieldset>
+
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary" id="team-submit-btn">Save Team</button>
+              <button type="button" class="btn btn-ghost" id="team-cancel-btn" style="display:none;" onclick="cancelTeamEdit()">Cancel</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card" id="team-reminders-card" style="display:none;">
+          <div class="card-header">
+            <h3>Default Reminders</h3>
+            <p class="hint-text">Pre-loaded into every weekly email for this team.</p>
+          </div>
+          <div id="team-reminders-list" class="item-list"></div>
+          <div class="add-row" style="margin-top: 0.75rem;">
+            <input type="text" id="team-reminder-input" placeholder="e.g., Bring shin guards to every session">
+            <button type="button" class="btn btn-add" onclick="addTeamReminder()">Add</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>Your Teams</h3>
+          </div>
+          <div id="teams-list" class="item-list">
+            <p class="empty-state">No teams yet. Create one above.</p>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ===== PLAYERS TAB ===== -->
+      <section id="tab-players" class="tab-content">
+
+        <div class="card">
+          <div class="card-header">
+            <h2>Players</h2>
+          </div>
+          <div class="form-group">
+            <label for="player-team-select">Select Team</label>
+            <select id="player-team-select">
+              <option value="">Select a team...</option>
+            </select>
+          </div>
+
+          <form id="player-form" style="display:none;">
+            <input type="hidden" id="player-edit-id">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="player-name">Player Name</label>
+                <input type="text" id="player-name" required placeholder="e.g., Alex Johnson">
+              </div>
+              <div class="form-group">
+                <label for="player-birthday">Birthday <span class="optional">(optional)</span></label>
+                <input type="text" id="player-birthday" placeholder="MM/DD/YYYY">
+              </div>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary" id="player-submit-btn">Add Player</button>
+              <button type="button" class="btn btn-ghost" id="player-cancel-btn" style="display:none;" onclick="cancelPlayerEdit()">Cancel</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card" id="players-import-card" style="display:none;">
+          <div class="card-header">
+            <h3>Import from CSV</h3>
+            <p class="hint-text">Format: <strong>Name, Birthdate (MM/DD/YYYY)</strong> — one per line.</p>
+          </div>
+          <div class="form-row" style="align-items:flex-end;">
+            <div class="form-group" style="margin-bottom:0;">
+              <input type="file" id="csv-file-input" accept=".csv,.txt">
+            </div>
+            <button type="button" class="btn btn-primary" onclick="importPlayersCSV()">Import</button>
+          </div>
+        </div>
+
+        <div class="card" id="players-list-card" style="display:none;">
+          <div class="card-header">
+            <h3>Roster</h3>
+          </div>
+          <div id="players-list" class="item-list"></div>
+        </div>
+
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
