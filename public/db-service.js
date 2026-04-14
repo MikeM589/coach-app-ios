@@ -120,3 +120,83 @@ async function deleteTeam(id) {
   const db = await getDb();
   await db.execute({ database: DB_NAME, statements: `DELETE FROM players WHERE team_id = ${parseInt(id)}; DELETE FROM reminders WHERE team_id = ${parseInt(id)}; DELETE FROM teams WHERE id = ${parseInt(id)};` });
 }
+
+// ── Players ─────────────────────────────────────────────
+
+async function getPlayersByTeam(teamId) {
+  const db = await getDb();
+  const res = await db.query({ database: DB_NAME, statement: 'SELECT * FROM players WHERE team_id = ? ORDER BY name', values: [teamId] });
+  return res.values || [];
+}
+
+async function createPlayer({ team_id, name, birthday }) {
+  const db = await getDb();
+  await db.run({
+    database: DB_NAME,
+    statement: 'INSERT INTO players (team_id, name, birthday) VALUES (?, ?, ?)',
+    values: [team_id, name, birthday || '']
+  });
+  const res = await db.query({ database: DB_NAME, statement: 'SELECT last_insert_rowid() as id', values: [] });
+  const id = (res.values[0] || {}).id;
+  return { id, team_id, name, birthday: birthday || '' };
+}
+
+async function updatePlayer(id, { name, birthday }) {
+  const db = await getDb();
+  await db.run({ database: DB_NAME, statement: 'UPDATE players SET name=?, birthday=? WHERE id=?', values: [name, birthday || '', id] });
+  const res = await db.query({ database: DB_NAME, statement: 'SELECT * FROM players WHERE id = ?', values: [id] });
+  return (res.values || [])[0] || null;
+}
+
+async function deletePlayer(id) {
+  const db = await getDb();
+  await db.run({ database: DB_NAME, statement: 'DELETE FROM players WHERE id = ?', values: [id] });
+}
+
+async function getUpcomingBirthdays(teamId, weekStart, weekEnd) {
+  const players = await getPlayersByTeam(teamId);
+  const start = new Date(weekStart);
+  const end = new Date(weekEnd);
+  return players.filter(player => {
+    if (!player.birthday) return false;
+    const bday = new Date(player.birthday + 'T00:00:00');
+    if (isNaN(bday.getTime())) return false;
+    const bdayMonth = bday.getMonth();
+    const bdayDate = bday.getDate();
+    const current = new Date(start);
+    while (current <= end) {
+      if (current.getMonth() === bdayMonth && current.getDate() === bdayDate) return true;
+      current.setDate(current.getDate() + 1);
+    }
+    return false;
+  });
+}
+
+// ── Reminders ────────────────────────────────────────────
+
+async function getRemindersByTeam(teamId) {
+  const db = await getDb();
+  const res = await db.query({ database: DB_NAME, statement: 'SELECT * FROM reminders WHERE team_id = ? ORDER BY id', values: [teamId] });
+  return res.values || [];
+}
+
+async function createReminder({ team_id, text }) {
+  const db = await getDb();
+  await db.run({ database: DB_NAME, statement: 'INSERT INTO reminders (team_id, text) VALUES (?, ?)', values: [team_id, text] });
+  const res = await db.query({ database: DB_NAME, statement: 'SELECT last_insert_rowid() as id', values: [] });
+  const id = (res.values[0] || {}).id;
+  return { id, team_id, text };
+}
+
+async function deleteReminder(id) {
+  const db = await getDb();
+  await db.run({ database: DB_NAME, statement: 'DELETE FROM reminders WHERE id = ?', values: [id] });
+}
+
+// Expose as global so app.js and email-builder.js can call it
+window.dbService = {
+  initializeDatabase,
+  getAllTeams, getTeam, createTeam, updateTeam, deleteTeam,
+  getPlayersByTeam, createPlayer, updatePlayer, deletePlayer, getUpcomingBirthdays,
+  getRemindersByTeam, createReminder, deleteReminder
+};
