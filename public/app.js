@@ -11,7 +11,8 @@ const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 
 // ============================================================
 // INIT
 // ============================================================
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  await window.dbService.initializeDatabase();
   setupNav();
   setDefaultWeek();
   loadTeams();
@@ -52,16 +53,7 @@ function showToast(msg) {
   setTimeout(() => toast.classList.remove('show'), 2500);
 }
 
-async function api(url, options = {}) {
-  if (options.body && typeof options.body === 'object') {
-    options.headers = { 'Content-Type': 'application/json', ...options.headers };
-    options.body = JSON.stringify(options.body);
-  }
-  const res = await fetch(url, options);
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Request failed');
-  return data;
-}
+
 
 function getSunday(dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
@@ -109,7 +101,7 @@ function dateToDisplay(dateStr) {
 // ============================================================
 async function loadTeams() {
   try {
-    teams = await api('/api/teams');
+    teams = await window.dbService.getAllTeams();
     renderTeamsList();
     populateTeamDropdowns();
   } catch (err) {
@@ -212,10 +204,10 @@ function setupTeamForm() {
 
     try {
       if (editId) {
-        await api(`/api/teams/${editId}`, { method: 'PUT', body: payload });
+        await window.dbService.updateTeam(editId, payload);
         showToast('Team updated!');
       } else {
-        await api('/api/teams', { method: 'POST', body: payload });
+        await window.dbService.createTeam(payload);
         showToast('Team added!');
       }
       cancelTeamEdit();
@@ -269,7 +261,7 @@ function cancelTeamEdit() {
 async function deleteTeam(id, name) {
   if (!confirm(`Delete team "${name}" and all its players?`)) return;
   try {
-    await api(`/api/teams/${id}`, { method: 'DELETE' });
+    await window.dbService.deleteTeam(id);
     showToast('Team deleted');
     loadTeams();
   } catch (err) {
@@ -297,7 +289,7 @@ function setupPlayerTeamSelect() {
 
 async function loadPlayers(teamId) {
   try {
-    const players = await api(`/api/teams/${teamId}/players`);
+    const players = await window.dbService.getPlayersByTeam(teamId);
     renderPlayersList(players);
   } catch (err) {
     console.error('Failed to load players:', err);
@@ -341,10 +333,10 @@ function setupPlayerForm() {
 
     try {
       if (editId) {
-        await api(`/api/players/${editId}`, { method: 'PUT', body: payload });
+        await window.dbService.updatePlayer(editId, payload);
         showToast('Player updated!');
       } else {
-        await api('/api/players', { method: 'POST', body: payload });
+        await window.dbService.createPlayer(payload);
         showToast('Player added!');
       }
       cancelPlayerEdit();
@@ -375,7 +367,7 @@ function cancelPlayerEdit() {
 async function deletePlayer(id, name) {
   if (!confirm(`Remove ${name} from the team?`)) return;
   try {
-    await api(`/api/players/${id}`, { method: 'DELETE' });
+    await window.dbService.deletePlayer(id);
     showToast('Player removed');
     const teamId = document.getElementById('player-team-select').value;
     loadPlayers(teamId);
@@ -415,9 +407,14 @@ async function fetchScheduleIfReady() {
     const sunday = getSunday(weekStart);
     const results = await Promise.all(
       teamIds.map(id =>
-        api(`/api/schedule?team_id=${id}&week_start=${sunday}`)
-          .then(data => ({ teamId: id, schedule: data.schedule }))
-          .catch(() => ({ teamId: id, schedule: null }))
+        window.dbService.getTeam(id).then(t => {
+          if (!t || !t.ical_url || !t.ical_url.trim()) {
+            return { teamId: id, schedule: null };
+          }
+          return window.getWeekSchedule(t.ical_url, sunday)
+            .then(schedule => ({ teamId: id, schedule }))
+            .catch(() => ({ teamId: id, schedule: null }));
+        })
       )
     );
 
@@ -636,7 +633,7 @@ async function loadEmailReminders() {
 
   try {
     const allReminders = await Promise.all(
-      teamIds.map(id => api(`/api/teams/${id}/reminders`).catch(() => []))
+      teamIds.map(id => window.dbService.getRemindersByTeam(id).catch(() => []))
     );
     const seen = new Set();
     currentReminders = allReminders.flat()
@@ -719,7 +716,7 @@ async function loadTeamReminders(teamId) {
   card.style.display = 'block';
 
   try {
-    const reminders = await api(`/api/teams/${teamId}/reminders`);
+    const reminders = await window.dbService.getRemindersByTeam(teamId);
     renderTeamReminders(reminders);
   } catch (err) {
     console.error('Failed to load team reminders:', err);
@@ -758,7 +755,7 @@ async function addTeamReminder() {
   if (!text) return;
 
   try {
-    await api('/api/reminders', { method: 'POST', body: { team_id: parseInt(editId), text } });
+    await window.dbService.createReminder({ team_id: parseInt(editId), text });
     input.value = '';
     showToast('Reminder added!');
     loadTeamReminders(editId);
@@ -770,7 +767,7 @@ async function addTeamReminder() {
 async function deleteTeamReminder(id) {
   const editId = document.getElementById('team-edit-id').value;
   try {
-    await api(`/api/reminders/${id}`, { method: 'DELETE' });
+    await window.dbService.deleteReminder(id);
     showToast('Reminder removed');
     loadTeamReminders(editId);
   } catch (err) {
@@ -867,10 +864,7 @@ async function importPlayersCSV() {
     }
 
     try {
-      await api('/api/players', {
-        method: 'POST',
-        body: { team_id: parseInt(teamId), name, birthday }
-      });
+      await window.dbService.createPlayer({ team_id: parseInt(teamId), name, birthday });
       imported++;
     } catch (err) {
       skipped++;
@@ -934,7 +928,7 @@ function setupEmailForm() {
     };
 
     try {
-      const result = await api('/api/generate-email', { method: 'POST', body: payload });
+      const result = await window.buildEmailMessages(payload);
       renderEmailOutput(result.messages);
       document.getElementById('output-card').style.display = 'block';
       document.getElementById('output-card').scrollIntoView({ behavior: 'smooth' });
