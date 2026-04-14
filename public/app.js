@@ -12,16 +12,24 @@ const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 
 // INIT
 // ============================================================
 document.addEventListener('DOMContentLoaded', async () => {
-  await window.dbService.initializeDatabase();
+  // Set up UI immediately so navigation and forms always work
   setupNav();
   setDefaultWeek();
-  loadTeams();
   setupEmailForm();
   setupTeamForm();
   setupPlayerTeamSelect();
   setupPlayerForm();
   setupScheduleListeners();
   setupReminderInputs();
+
+  // Initialize database then load data
+  try {
+    await window.dbService.initializeDatabase();
+    loadTeams();
+  } catch (err) {
+    console.error('Database initialization failed:', err);
+    showToast('Could not open database: ' + err.message);
+  }
 });
 
 // ============================================================
